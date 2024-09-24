@@ -104,3 +104,5 @@ plt.show()
 sns.kdeplot(y_test, bw_method=0.1)
 sns.kdeplot(y_pred_poly, bw_method=0.1)
 
+
+# %%
