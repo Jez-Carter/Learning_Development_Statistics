@@ -45,10 +45,6 @@ plt.show()
 # The distributions are either skewed or multi-modal.
 # Population, total bedrooms and total rooms in a block are very connected things and have similar distributions.
 
-# %%
-test = df.select_dtypes(include=[np.number]).corr().round(2)
-np.zeros_like(test,dtype=bool)
-
 # %% Further data exploration - Correlation Matrix
 
 def corrMat(df,id=False):
@@ -131,5 +127,48 @@ plt.show()
 # Population, income and median house age all show some correlation with distance from these major cities. The relationship is weaker though.
 
 
-# %%
+# %% Removing Outliers
+df = df[df['median_house_value']<500000] 
+df = df[df['housing_median_age']<52] 
 
+df.hist(bins=60, figsize=(15,9),color='tab:blue',edgecolor='black')
+plt.show()
+
+# %% Imputing Missing Data
+
+def impute_knn(df):
+    
+    ''' inputs: pandas df containing feature matrix '''
+    ''' outputs: dataframe with NaN imputed '''
+    # imputation with KNN unsupervised method
+
+    # separate dataframe into numerical/categorical
+    ldf = df.select_dtypes(include=[np.number]) # numerical columns
+    ldf_putaside = df.select_dtypes(exclude=[np.number]) # categorical columns
+    # define columns w/ and w/o missing data
+    cols_nan = ldf.columns[ldf.isna().any()].tolist() # columns with missing data
+    cols_no_nan = ldf.columns.difference(cols_nan).values # columns without missing data
+
+    for col in cols_nan:                
+        imp_test = ldf[ldf[col].isna()] # rows with missing data - test set
+        imp_train = ldf.dropna() # rows with no missing data - train set 
+        model = KNeighborsRegressor(n_neighbors=5)  # KNR Unsupervised Approach
+        knr = model.fit(imp_train[cols_no_nan], imp_train[col])
+        ldf.loc[df[col].isna(), col] = knr.predict(imp_test[cols_no_nan])
+    
+    return pd.concat([ldf,ldf_putaside],axis=1)
+
+df_imputed = impute_knn(df)
+df_imputed.info()
+
+# %% Splitting into Training and Testing Data 
+df_imputed_train,df_imputed_test = train_test_split(df_imputed,test_size=0.3,random_state=43) # 70-30 split
+
+# %% Feature Engineering
+# Feature engineering is the process of transforming raw data into features that better represent the underlying problem to the predictive models, resulting in improved model accuracy on unseen data.
+# Features with very high correlation teach a model similar things, multiple times, maybe consider combing them and dropping the others.
+df_imputed['diag_coord'] = (df_imputed['longitude'] + df_imputed['latitude']) 
+df_imputed['bedroom_per_room'] = df_imputed['total_bedrooms']/df_imputed['total_rooms'] 
+df_imputed['pop_per_house'] = df_imputed['population']/df_imputed['households']
+
+corrMat(df_imputed.select_dtypes(include=[np.number]))
