@@ -50,3 +50,5 @@ cbar.set_label('House Price ($)')
 
 plt.show()
 
+
+# %%
